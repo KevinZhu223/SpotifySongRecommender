@@ -1,0 +1,9 @@
+# Spotify API Credentials
+# Get these from https://developer.spotify.com/dashboard
+SPOTIFY_CLIENT_ID=a9093ae4267f498d8364eb08f444afe8
+SPOTIFY_CLIENT_SECRET=c9f966d960a24ee9933486ce7c09f1de
+SPOTIFY_REDIRECT_URI=http://127.0.0.1:8888/callback
+
+# Flask Configuration
+SECRET_KEY=your-secret-key-here
+DEBUG=True

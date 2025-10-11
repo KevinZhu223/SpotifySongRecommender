@@ -1,0 +1,617 @@
+{% extends "base.html" %}
+
+{% block title %}Spotify Song Recommender - Home{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Hero Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="hero-section text-center py-5">
+                <h1 class="display-3 text-success mb-4">
+                    <i class="fab fa-spotify"></i> Spotify Song Recommender
+                </h1>
+                <p class="lead text-muted mb-4">Discover your next favorite song with AI-powered recommendations</p>
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>New Features:</strong> Comprehensive filtering, enhanced ML accuracy, and interactive profile analytics!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Action Cards -->
+    <div class="row mb-5">
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card action-card h-100 border-0 shadow-lg">
+                <div class="card-body text-center p-4">
+                    <div class="action-icon mb-3">
+                        <i class="fas fa-download fa-4x text-primary"></i>
+                    </div>
+                    <h4 class="card-title">Analyze Your Music</h4>
+                    <p class="card-text text-muted">Comprehensive analysis of your Spotify data including liked songs, playlists, and saved albums.</p>
+                    <button id="collectDataBtn" class="btn btn-primary btn-lg w-100">
+                        <i class="fas fa-download"></i> Start Analysis
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card action-card h-100 border-0 shadow-lg">
+                <div class="card-body text-center p-4">
+                    <div class="action-icon mb-3">
+                        <i class="fas fa-star fa-4x text-warning"></i>
+                    </div>
+                    <h4 class="card-title">Get Recommendations</h4>
+                    <p class="card-text text-muted">AI-powered recommendations that filter out songs you already know and love.</p>
+                    <button id="getRecommendationsBtn" class="btn btn-success btn-lg w-100" disabled>
+                        <i class="fas fa-star"></i> Get Recommendations
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card action-card h-100 border-0 shadow-lg">
+                <div class="card-body text-center p-4">
+                    <div class="action-icon mb-3">
+                        <i class="fas fa-chart-line fa-4x text-info"></i>
+                    </div>
+                    <h4 class="card-title">View Your Profile</h4>
+                    <p class="card-text text-muted">Interactive analytics showing your music taste, top artists, and listening patterns.</p>
+                    <a href="/profile" class="btn btn-info btn-lg w-100">
+                        <i class="fas fa-chart-line"></i> View Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommendation Settings -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header bg-gradient-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-cog"></i> Recommendation Settings</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="recommendationType" class="form-label fw-bold">Recommendation Type</label>
+                            <select id="recommendationType" class="form-select form-select-lg">
+                                <option value="user_based">User-Based (ML)</option>
+                                <option value="content_based">Content-Based</option>
+                                <option value="hybrid">Hybrid</option>
+                                <option value="diverse">Diverse</option>
+                                <option value="spotify">Spotify AI</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="numRecommendations" class="form-label fw-bold">Number of Recommendations</label>
+                            <select id="numRecommendations" class="form-select form-select-lg">
+                                <option value="5">5 songs</option>
+                                <option value="10" selected>10 songs</option>
+                                <option value="20">20 songs</option>
+                                <option value="50">50 songs</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="trackSearch" class="form-label fw-bold">Search for Similar Songs</label>
+                            <div class="input-group">
+                                <input type="text" id="trackSearch" class="form-control form-control-lg" placeholder="Enter track name...">
+                                <button id="searchBtn" class="btn btn-outline-secondary" type="button">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status and Results -->
+    <div class="row">
+        <div class="col-12">
+            <div id="statusAlert" class="alert alert-info d-none" role="alert">
+                <i class="fas fa-info-circle"></i>
+                <span id="statusMessage">Ready to analyze your music!</span>
+            </div>
+
+            <div id="resultsContainer" class="d-none">
+                <div class="card border-0 shadow-lg">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0"><i class="fas fa-music"></i> Your Recommendations</h4>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="recommendationsList" class="list-group list-group-flush">
+                            <!-- Recommendations will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="userTracksContainer" class="d-none">
+                <div class="card border-0 shadow-lg">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0"><i class="fas fa-list"></i> Your Music Library</h4>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="userTracksList" class="list-group list-group-flush">
+                            <!-- User tracks will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hero-section {
+    background: linear-gradient(135deg, #1db954, #1ed760);
+    color: white;
+    border-radius: 20px;
+    margin: 0 -15px;
+}
+
+.action-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 15px;
+}
+
+.action-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
+}
+
+.action-icon {
+    transition: transform 0.3s ease;
+}
+
+.action-card:hover .action-icon {
+    transform: scale(1.1);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #1db954, #1ed760) !important;
+}
+
+.track-item {
+    transition: background-color 0.3s ease;
+}
+
+.track-item:hover {
+    background-color: #f8f9fa;
+}
+
+.score-badge {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+}
+
+.score-excellent { background-color: #d4edda; color: #155724; }
+.score-good { background-color: #d1ecf1; color: #0c5460; }
+.score-fair { background-color: #fff3cd; color: #856404; }
+
+/* Enhanced UI Styles */
+.bg-gradient-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #17a2b8, #6f42c1);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff, #6610f2);
+}
+
+.card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.btn {
+    transition: all 0.2s ease-in-out;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.track-item {
+    transition: background-color 0.2s ease-in-out;
+}
+
+.track-item:hover {
+    background-color: #f8f9fa;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-online { background-color: #28a745; }
+.status-offline { background-color: #dc3545; }
+        .status-loading { background-color: #ffc107; animation: pulse 1.5s infinite; }
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Enhanced recommendation cards */
+.recommendation-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.recommendation-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.recommendation-score {
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+/* Loading animations */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #1db954;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Status indicators */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.status-online { background-color: #d4edda; color: #155724; }
+.status-offline { background-color: #f8d7da; color: #721c24; }
+.status-loading { background-color: #fff3cd; color: #856404; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const collectDataBtn = document.getElementById('collectDataBtn');
+    const getRecommendationsBtn = document.getElementById('getRecommendationsBtn');
+    const searchBtn = document.getElementById('searchBtn');
+    const statusAlert = document.getElementById('statusAlert');
+    const statusMessage = document.getElementById('statusMessage');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const userTracksContainer = document.getElementById('userTracksContainer');
+    
+    // Load saved data automatically
+    loadSavedData();
+
+    // Function to load saved data automatically
+    async function loadSavedData() {
+        try {
+            const response = await fetch('/load_saved_data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                showStatus(`Loaded saved data: ${data.tracks_count} tracks, ${data.known_songs_count} known songs`, 'info');
+                // Enable recommendation buttons
+                document.getElementById('getRecommendationsBtn').disabled = false;
+                document.getElementById('getSpotifyRecommendationsBtn').disabled = false;
+                
+                // Update UI elements with loaded data
+                updateUIWithData(data);
+            } else {
+                // No saved data found, show message
+                showStatus('No saved data found. Click "Collect My Data" to start.', 'warning');
+            }
+        } catch (error) {
+            console.log('No saved data available');
+        }
+    }
+    
+    // Function to update UI with loaded data
+    function updateUIWithData(data) {
+        // Update status indicators
+        const statusIndicator = document.getElementById('dataStatus');
+        if (statusIndicator) {
+            statusIndicator.innerHTML = `
+                <span class="status-indicator status-online"></span>
+                Data Loaded: ${data.tracks_count} tracks, ${data.known_songs_count} known songs
+            `;
+        }
+        
+        // Update recommendation count options based on available data
+        const numSelect = document.getElementById('numRecommendations');
+        if (numSelect && data.tracks_count) {
+            // Enable higher numbers if we have more data
+            const maxReasonable = Math.min(50, Math.floor(data.tracks_count / 10));
+            const options = numSelect.querySelectorAll('option');
+            options.forEach(option => {
+                const value = parseInt(option.value);
+                if (value > maxReasonable) {
+                    option.disabled = true;
+                    option.textContent = `${value} songs (limited by data)`;
+                } else {
+                    option.disabled = false;
+                    option.textContent = `${value} songs`;
+                }
+            });
+        }
+    }
+
+    // Show status message
+    function showStatus(message, type = 'info') {
+        statusMessage.textContent = message;
+        statusAlert.className = `alert alert-${type} d-block`;
+    }
+
+    // Hide status message
+    function hideStatus() {
+        statusAlert.className = 'alert alert-info d-none';
+    }
+
+    // Collect data
+    collectDataBtn.addEventListener('click', async function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+        showStatus('Analyzing your Spotify data... This may take a few minutes.', 'info');
+
+        try {
+            const response = await fetch('/collect_data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showStatus(`Data collection successful! Found ${data.tracks_count} tracks.`, 'success');
+                getRecommendationsBtn.disabled = false;
+                
+                // Load user tracks
+                loadUserTracks();
+            } else {
+                showStatus(`Error: ${data.message}`, 'danger');
+            }
+        } catch (error) {
+            showStatus(`Error: ${error.message}`, 'danger');
+        } finally {
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-download"></i> Start Analysis';
+        }
+    });
+
+    // Get recommendations
+    getRecommendationsBtn.addEventListener('click', async function() {
+        const type = document.getElementById('recommendationType').value;
+        const n = document.getElementById('numRecommendations').value;
+        
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting Recommendations...';
+        showStatus('Generating personalized recommendations...', 'info');
+
+        try {
+            console.log(`Requesting recommendations: type=${type}, n=${n}`);
+            const response = await fetch(`/recommendations?type=${type}&n=${n}`);
+            const data = await response.json();
+            console.log('Recommendations response:', data);
+
+            if (data.success) {
+                displayRecommendations(data.recommendations);
+                showStatus(`Found ${data.recommendations.length} recommendations!`, 'success');
+            } else {
+                showStatus(`Error: ${data.message}`, 'danger');
+            }
+        } catch (error) {
+            showStatus(`Error: ${error.message}`, 'danger');
+        } finally {
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-star"></i> Get Recommendations';
+        }
+    });
+
+    // Search for similar tracks
+    searchBtn.addEventListener('click', async function() {
+        const query = document.getElementById('trackSearch').value.trim();
+        if (!query) return;
+
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        showStatus(`Searching for tracks similar to "${query}"...`, 'info');
+
+        try {
+            const response = await fetch(`/search_tracks?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+
+            if (data.success) {
+                displayRecommendations(data.recommendations);
+                showStatus(`Found ${data.recommendations.length} similar tracks!`, 'success');
+            } else {
+                showStatus(`Error: ${data.message}`, 'danger');
+            }
+        } catch (error) {
+            showStatus(`Error: ${error.message}`, 'danger');
+        } finally {
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-search"></i>';
+        }
+    });
+
+    // Display recommendations
+    function displayRecommendations(recommendations) {
+        const container = document.getElementById('recommendationsList');
+        container.innerHTML = '';
+
+        if (recommendations.length === 0) {
+            container.innerHTML = '<div class="list-group-item text-center text-muted">No recommendations found.</div>';
+            resultsContainer.classList.remove('d-none');
+            return;
+        }
+
+        recommendations.forEach((rec, index) => {
+            const score = rec.similarity_score || 0;
+            let scoreClass = 'score-fair';
+            if (score >= 80) scoreClass = 'score-excellent';
+            else if (score >= 60) scoreClass = 'score-good';
+
+            const item = document.createElement('div');
+            item.className = 'list-group-item track-item recommendation-card d-flex justify-content-between align-items-center';
+            item.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                            ${index + 1}
+                        </div>
+                    </div>
+                    <div>
+                        <h6 class="mb-1">${rec.track_name}</h6>
+                        <small class="text-muted">${rec.artist_name} • ${rec.album_name}</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="btn-group me-2" role="group">
+                        <button type="button" class="btn btn-outline-success btn-sm" onclick="handleFeedback('${rec.track_id}', '${rec.track_name.replace(/'/g, "\\'")}', '${rec.artist_name.replace(/'/g, "\\'")}', '${rec.recommendation_type}', 'like', this)" title="Like this song">
+                            <i class="fas fa-thumbs-up"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="handleFeedback('${rec.track_id}', '${rec.track_name.replace(/'/g, "\\'")}', '${rec.artist_name.replace(/'/g, "\\'")}', '${rec.recommendation_type}', 'dislike', this)" title="Dislike this song">
+                            <i class="fas fa-thumbs-down"></i>
+                        </button>
+                    </div>
+                    <span class="score-badge ${scoreClass} me-2">
+                        ${score}% match
+                    </span>
+                    <small class="text-muted">${rec.recommendation_type}</small>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+
+        resultsContainer.classList.remove('d-none');
+    }
+
+    // Load user tracks
+    async function loadUserTracks() {
+        try {
+            const response = await fetch('/user_tracks');
+            const data = await response.json();
+
+            if (data.success && data.tracks.length > 0) {
+                const container = document.getElementById('userTracksList');
+                container.innerHTML = '';
+
+                data.tracks.slice(0, 20).forEach((track, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item track-item d-flex justify-content-between align-items-center';
+                    item.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                                    ${index + 1}
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">${track.track_name}</h6>
+                                <small class="text-muted">${track.artist_name}</small>
+                            </div>
+                        </div>
+                        <small class="text-muted">${track.source}</small>
+                    `;
+                    container.appendChild(item);
+                });
+
+                userTracksContainer.classList.remove('d-none');
+            }
+        } catch (error) {
+            console.error('Error loading user tracks:', error);
+        }
+    }
+
+    // Handle feedback (like/dislike)
+    window.handleFeedback = async function(trackId, trackName, artistName, recommendationType, action, buttonElement) {
+        try {
+            const response = await fetch('/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    track_id: trackId,
+                    track_name: trackName,
+                    artist_name: artistName,
+                    recommendation_type: recommendationType,
+                    action: action
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                // Show success message
+                showStatus(`Thanks for your feedback! ${action === 'like' ? '👍' : '👎'}`, 'success');
+                
+                // Update button appearance
+                const button = buttonElement || document.querySelector(`button[onclick*="${trackId}"]`);
+                if (button) {
+                    if (action === 'like') {
+                        button.classList.remove('btn-outline-success');
+                        button.classList.add('btn-success');
+                    } else {
+                        button.classList.remove('btn-outline-danger');
+                        button.classList.add('btn-danger');
+                    }
+                    button.disabled = true;
+                }
+            } else {
+                showStatus(`Error: ${data.message}`, 'danger');
+            }
+        } catch (error) {
+            showStatus(`Error: ${error.message}`, 'danger');
+        }
+    };
+});
+</script>
+{% endblock %}

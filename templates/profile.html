@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Music Profile - Spotify Recommender</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .profile-header {
+            background: linear-gradient(135deg, #1db954, #1ed760);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #1db954;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 1rem 0;
+        }
+        .artist-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .artist-item:last-child {
+            border-bottom: none;
+        }
+        .artist-rank {
+            background: #1db954;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .back-btn {
+            background: #1db954;
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .back-btn:hover {
+            background: #1ed760;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-user-circle"></i> Your Music Profile</h1>
+                    <p class="lead">Discover your musical taste and listening patterns</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="/" class="back-btn">
+                        <i class="fas fa-arrow-left"></i> Back to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Overview Stats -->
+        <div class="row">
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-number" id="total-tracks">-</div>
+                    <h5>Total Tracks</h5>
+                    <p class="text-muted">Songs in your library</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-number" id="unique-artists">-</div>
+                    <h5>Unique Artists</h5>
+                    <p class="text-muted">Different artists</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-number" id="unique-albums">-</div>
+                    <h5>Unique Albums</h5>
+                    <p class="text-muted">Different albums</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-number" id="avg-duration">-</div>
+                    <h5>Avg Duration</h5>
+                    <p class="text-muted">Minutes per track</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <h5><i class="fas fa-chart-pie"></i> Top Artists</h5>
+                    <div class="chart-container">
+                        <canvas id="artistsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <h5><i class="fas fa-chart-bar"></i> Audio Features</h5>
+                    <div class="chart-container">
+                        <canvas id="featuresChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Artists List -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <h5><i class="fas fa-star"></i> Top 10 Artists</h5>
+                    <div id="top-artists-list">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <h5><i class="fas fa-music"></i> Top 10 Songs</h5>
+                    <div id="top-songs-list">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Listening Patterns -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="stat-card">
+                    <h5><i class="fas fa-chart-line"></i> Listening Patterns</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="stat-number" id="avg-popularity">-</div>
+                                <h6>Avg Popularity</h6>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="stat-number" id="diversity-score">-</div>
+                                <h6>Diversity Score</h6>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="stat-number" id="energy-level">-</div>
+                                <h6>Energy Level</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Load profile data
+        async function loadProfile() {
+            try {
+                const response = await fetch('/user_profile');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayProfile(data.profile);
+                } else {
+                    console.error('Failed to load profile:', data.message);
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+
+        function displayProfile(profile) {
+            // Update overview stats
+            document.getElementById('total-tracks').textContent = profile.total_tracks || 0;
+            document.getElementById('unique-artists').textContent = profile.unique_artists || 0;
+            document.getElementById('unique-albums').textContent = profile.unique_albums || 0;
+            document.getElementById('avg-duration').textContent = (profile.avg_track_duration || 0).toFixed(1);
+            document.getElementById('avg-popularity').textContent = (profile.avg_popularity || 0).toFixed(0);
+            document.getElementById('diversity-score').textContent = ((profile.unique_artists / profile.total_tracks) * 100 || 0).toFixed(1) + '%';
+            document.getElementById('energy-level').textContent = ((profile.avg_energy || 0) * 100).toFixed(0) + '%';
+
+            // Create artists chart
+            if (profile.top_artists) {
+                createArtistsChart(profile.top_artists);
+                displayTopArtists(profile.top_artists);
+            }
+
+            // Create features chart
+            createFeaturesChart(profile);
+
+            // Display top songs
+            displayTopSongs(profile.top_songs || []);
+        }
+
+        function createArtistsChart(artists) {
+            const ctx = document.getElementById('artistsChart').getContext('2d');
+            const labels = Object.keys(artists).slice(0, 8);
+            const values = Object.values(artists).slice(0, 8);
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: [
+                            '#1DB954', '#FF6B6B', '#4ECDC4', '#45B7D1',
+                            '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'
+                        ],
+                        borderColor: [
+                            '#1DB954', '#FF6B6B', '#4ECDC4', '#45B7D1',
+                            '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createFeaturesChart(profile) {
+            const ctx = document.getElementById('featuresChart').getContext('2d');
+            const features = ['Danceability', 'Energy', 'Valence', 'Acousticness', 'Instrumentalness'];
+            
+            // Get values and ensure they're properly formatted
+            const values = [
+                (profile.avg_danceability || 0.5) * 100,
+                (profile.avg_energy || 0.5) * 100,
+                (profile.avg_valence || 0.5) * 100,
+                (profile.avg_acousticness || 0.5) * 100,
+                (profile.avg_instrumentalness || 0.5) * 100
+            ];
+            
+            // Ensure all values are valid numbers
+            const validValues = values.map(val => {
+                const num = parseFloat(val);
+                return isNaN(num) ? 50 : Math.max(0, Math.min(100, num));
+            });
+
+            console.log('Audio features data:', values); // Debug log
+            console.log('Profile data:', profile); // Debug log
+
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: features,
+                    datasets: [{
+                        label: 'Your Profile',
+                        data: validValues,
+                        backgroundColor: 'rgba(29, 185, 84, 0.2)',
+                        borderColor: '#1db954',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#1db954',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#1db954'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                stepSize: 20
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function displayTopArtists(artists) {
+            const container = document.getElementById('top-artists-list');
+            const artistEntries = Object.entries(artists).slice(0, 10);
+            
+            container.innerHTML = artistEntries.map(([artist, count], index) => `
+                <div class="artist-item">
+                    <div class="d-flex align-items-center">
+                        <div class="artist-rank">${index + 1}</div>
+                        <div class="ms-3">
+                            <strong>${artist}</strong>
+                            <br>
+                            <small class="text-muted">${count} tracks</small>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayTopSongs(songs) {
+            const container = document.getElementById('top-songs-list');
+            
+            if (songs.length === 0) {
+                container.innerHTML = '<p class="text-muted">No top songs data available</p>';
+                return;
+            }
+
+            container.innerHTML = songs.slice(0, 10).map((song, index) => `
+                <div class="artist-item">
+                    <div class="d-flex align-items-center">
+                        <div class="artist-rank">${index + 1}</div>
+                        <div class="ms-3">
+                            <strong>${song.track_name || 'Unknown'}</strong>
+                            <br>
+                            <small class="text-muted">${song.artist_name || 'Unknown Artist'}</small>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load profile when page loads
+        document.addEventListener('DOMContentLoaded', loadProfile);
+    </script>
+</body>
+</html>
