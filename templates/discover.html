@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+
+{% block title %}Discover - Spotify Song Recommender{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ================================================================
+   DISCOVER / TINDER-STYLE SWIPE UI
+   ================================================================ */
+.discover-wrapper {
+    max-width: 480px;
+    margin: 0 auto;
+    padding-bottom: 3rem;
+}
+
+/* Card stack */
+.swipe-card {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 12px 40px rgba(0,0,0,.15);
+    transition: transform .35s ease, opacity .35s ease;
+}
+.swipe-card.swipe-left  { transform: translateX(-120%) rotate(-14deg); opacity: 0; }
+.swipe-card.swipe-right { transform: translateX(120%)  rotate(14deg);  opacity: 0; }
+
+/* Album art */
+.album-art-wrap {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: linear-gradient(135deg, #1db954 0%, #191414 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+.album-art-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.album-art-wrap .no-art {
+    font-size: 6rem;
+    color: rgba(255,255,255,.25);
+}
+
+/* Gradient overlay so text is readable */
+.card-text-overlay {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 2rem 1.5rem 1rem;
+    background: linear-gradient(transparent, rgba(0,0,0,.75));
+    color: #fff;
+}
+.card-text-overlay h3 { font-size: 1.4rem; margin: 0; font-weight: 700; }
+.card-text-overlay p  { margin: .2rem 0 0; opacity: .85; font-size: .95rem; }
+
+/* Audio preview bar */
+.audio-bar {
+    padding: .75rem 1.25rem;
+    background: #f9f9f9;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+.audio-bar .play-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: var(--spotify-green);
+    color: #fff;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform .15s;
+}
+.audio-bar .play-btn:hover { transform: scale(1.1); }
+.audio-bar .progress-wrap {
+    flex: 1;
+    height: 6px;
+    background: #ddd;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.audio-bar .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--spotify-green);
+    border-radius: 3px;
+    transition: width .15s linear;
+}
+.audio-bar .time-label { font-size: .75rem; color: #888; width: 32px; text-align: right; }
+
+/* Action buttons */
+.action-row {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+.action-btn {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 3px solid #ddd;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    cursor: pointer;
+    transition: all .2s;
+}
+.action-btn.dislike { color: #dc3545; }
+.action-btn.dislike:hover,
+.action-btn.dislike:active { background: #dc3545; color: #fff; border-color: #dc3545; transform: scale(1.15); }
+.action-btn.like    { color: #1db954; }
+.action-btn.like:hover,
+.action-btn.like:active { background: #1db954; color: #fff; border-color: #1db954; transform: scale(1.15); }
+
+/* Liked queue panel */
+.liked-panel {
+    margin-top: 2.5rem;
+}
+.liked-panel h5 { font-weight: 700; }
+.liked-track {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .6rem 0;
+    border-bottom: 1px solid #eee;
+}
+.liked-track img {
+    width: 44px; height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+.liked-track .info { flex: 1; }
+.liked-track .info .name { font-weight: 600; font-size: .95rem; }
+.liked-track .info .artist { color: #888; font-size: .82rem; }
+.liked-track .remove-btn {
+    background: none; border: none; color: #dc3545; font-size: 1rem; cursor: pointer;
+}
+
+/* Empty / loading states */
+.empty-state {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: #888;
+}
+.empty-state i { font-size: 4rem; margin-bottom: 1rem; display: block; color: #ccc; }
+
+/* Export bar */
+.export-bar {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding: 1rem;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+    border-radius: 16px 16px 0 0;
+    text-align: center;
+    margin-top: 1.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="discover-wrapper">
+    <div class="text-center mb-4">
+        <h2><i class="fab fa-spotify text-success"></i> Discover</h2>
+        <p class="text-muted">Swipe right to like, left to skip. Hear a preview, build a playlist.</p>
+    </div>
+
+    <!-- Swipe Card -->
+    <div id="cardContainer">
+        <div id="swipeCard" class="swipe-card d-none">
+            <div class="album-art-wrap">
+                <img id="albumArt" src="" alt="Album art">
+                <div class="card-text-overlay">
+                    <h3 id="trackName"></h3>
+                    <p id="artistName"></p>
+                    <p id="albumName" class="small" style="opacity:.65;"></p>
+                </div>
+            </div>
+            <div class="audio-bar">
+                <button class="play-btn" id="playBtn" title="Play preview">
+                    <i class="fas fa-play" id="playIcon"></i>
+                </button>
+                <div class="progress-wrap"><div class="progress-fill" id="progressFill"></div></div>
+                <span class="time-label" id="timeLabel">0:00</span>
+            </div>
+        </div>
+
+        <!-- Loading state -->
+        <div id="loadingState" class="empty-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading your next track&hellip;</p>
+        </div>
+
+        <!-- Empty / error state -->
+        <div id="emptyState" class="empty-state d-none">
+            <i class="fas fa-music"></i>
+            <p id="emptyMsg">No more tracks right now.</p>
+            <button class="btn btn-outline-secondary mt-2" onclick="resetAndLoad()">
+                <i class="fas fa-redo"></i> Reset &amp; try again
+            </button>
+        </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="action-row" id="actionRow" style="display:none;">
+        <button class="action-btn dislike" id="btnDislike" title="Skip">
+            <i class="fas fa-times"></i>
+        </button>
+        <button class="action-btn like" id="btnLike" title="Like">
+            <i class="fas fa-heart"></i>
+        </button>
+    </div>
+
+    <!-- Liked queue -->
+    <div class="liked-panel" id="likedPanel" style="display:none;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0"><i class="fas fa-heart text-success me-1"></i> Liked (<span id="likedCount">0</span>)</h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="toggleLikedList()">
+                <i class="fas fa-chevron-down" id="likedChevron"></i>
+            </button>
+        </div>
+        <div id="likedList" class="collapse show"></div>
+    </div>
+
+    <!-- Export bar -->
+    <div class="export-bar" id="exportBar" style="display:none;">
+        <button class="btn btn-success btn-lg w-100" id="exportBtn">
+            <i class="fab fa-spotify me-2"></i> Export Playlist to Spotify
+        </button>
+        <small class="text-muted d-block mt-1" id="exportHint">Creates a private playlist on your account</small>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+    // ---- State ----
+    let currentTrack = null;
+    const likedTracks = [];
+    const audio = new Audio();
+    let isPlaying = false;
+
+    // ---- DOM refs ----
+    const card       = document.getElementById('swipeCard');
+    const loadState  = document.getElementById('loadingState');
+    const emptyState = document.getElementById('emptyState');
+    const actionRow  = document.getElementById('actionRow');
+    const likedPanel = document.getElementById('likedPanel');
+    const exportBar  = document.getElementById('exportBar');
+
+    // ---- Bootstrap ----
+    fetchNext();
+
+    // ---- Fetch next track ----
+    async function fetchNext() {
+        stopAudio();
+        card.classList.add('d-none');
+        loadState.classList.remove('d-none');
+        emptyState.classList.add('d-none');
+        actionRow.style.display = 'none';
+
+        try {
+            const resp = await fetch('/discover/next');
+            const data = await resp.json();
+            if (data.success && data.track) {
+                showCard(data.track);
+            } else {
+                showEmpty(data.message || 'No tracks available. Collect data first.');
+            }
+        } catch (err) {
+            showEmpty('Error loading track. Make sure you are logged in and have data collected.');
+        }
+    }
+
+    // ---- Show card ----
+    function showCard(track) {
+        currentTrack = track;
+        loadState.classList.add('d-none');
+        emptyState.classList.add('d-none');
+
+        document.getElementById('trackName').textContent  = track.track_name;
+        document.getElementById('artistName').textContent = track.artist_name;
+        document.getElementById('albumName').textContent  = track.album_name || '';
+
+        const art = document.getElementById('albumArt');
+        if (track.album_image) { art.src = track.album_image; art.style.display = ''; }
+        else { art.style.display = 'none'; }
+
+        // Prep audio
+        if (track.preview_url) {
+            audio.src = track.preview_url;
+            audio.load();
+        }
+
+        card.className = 'swipe-card';          // reset animation classes
+        card.classList.remove('d-none');
+        actionRow.style.display = '';
+    }
+
+    function showEmpty(msg) {
+        loadState.classList.add('d-none');
+        card.classList.add('d-none');
+        actionRow.style.display = 'none';
+        document.getElementById('emptyMsg').textContent = msg;
+        emptyState.classList.remove('d-none');
+    }
+
+    // ---- Audio ----
+    document.getElementById('playBtn').addEventListener('click', toggleAudio);
+
+    function toggleAudio() {
+        if (!currentTrack || !currentTrack.preview_url) return;
+        if (isPlaying) { stopAudio(); } else { playAudio(); }
+    }
+    function playAudio() {
+        audio.play();
+        isPlaying = true;
+        document.getElementById('playIcon').className = 'fas fa-pause';
+    }
+    function stopAudio() {
+        audio.pause();
+        audio.currentTime = 0;
+        isPlaying = false;
+        document.getElementById('playIcon').className = 'fas fa-play';
+        document.getElementById('progressFill').style.width = '0%';
+        document.getElementById('timeLabel').textContent = '0:00';
+    }
+    audio.addEventListener('timeupdate', () => {
+        if (!audio.duration) return;
+        const pct = (audio.currentTime / audio.duration) * 100;
+        document.getElementById('progressFill').style.width = pct + '%';
+        const s = Math.floor(audio.currentTime);
+        document.getElementById('timeLabel').textContent =
+            Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+    });
+    audio.addEventListener('ended', stopAudio);
+
+    // ---- Swipe actions ----
+    document.getElementById('btnLike').addEventListener('click', () => swipe('like'));
+    document.getElementById('btnDislike').addEventListener('click', () => swipe('dislike'));
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (!currentTrack) return;
+        if (e.key === 'ArrowRight' || e.key === 'l') swipe('like');
+        if (e.key === 'ArrowLeft'  || e.key === 'h') swipe('dislike');
+        if (e.key === ' ') { e.preventDefault(); toggleAudio(); }
+    });
+
+    async function swipe(action) {
+        if (!currentTrack) return;
+        const track = currentTrack;
+        currentTrack = null;
+
+        // Animate card off-screen
+        card.classList.add(action === 'like' ? 'swipe-right' : 'swipe-left');
+        stopAudio();
+
+        // Record swipe
+        try {
+            await fetch('/discover/swipe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, track })
+            });
+        } catch (e) { console.error('Swipe record failed', e); }
+
+        if (action === 'like') {
+            likedTracks.push(track);
+            renderLiked();
+        }
+
+        // Brief delay for the animation, then load next
+        setTimeout(fetchNext, 400);
+    }
+
+    // ---- Liked list ----
+    function renderLiked() {
+        const count = likedTracks.length;
+        document.getElementById('likedCount').textContent = count;
+        if (count === 0) { likedPanel.style.display = 'none'; exportBar.style.display = 'none'; return; }
+        likedPanel.style.display = '';
+        exportBar.style.display  = '';
+
+        const list = document.getElementById('likedList');
+        list.innerHTML = '';
+        likedTracks.forEach((t, i) => {
+            const div = document.createElement('div');
+            div.className = 'liked-track';
+            div.innerHTML = `
+                ${t.album_image ? `<img src="${t.album_image}" alt="">` : ''}
+                <div class="info">
+                    <div class="name">${t.track_name}</div>
+                    <div class="artist">${t.artist_name}</div>
+                </div>
+                <button class="remove-btn" title="Remove" data-idx="${i}">
+                    <i class="fas fa-times"></i>
+                </button>`;
+            div.querySelector('.remove-btn').addEventListener('click', () => {
+                likedTracks.splice(i, 1);
+                renderLiked();
+            });
+            list.appendChild(div);
+        });
+    }
+
+    window.toggleLikedList = function() {
+        const l = document.getElementById('likedList');
+        const chevron = document.getElementById('likedChevron');
+        if (l.classList.contains('show')) {
+            l.classList.remove('show');
+            chevron.className = 'fas fa-chevron-up';
+        } else {
+            l.classList.add('show');
+            chevron.className = 'fas fa-chevron-down';
+        }
+    };
+
+    // ---- Export Playlist ----
+    document.getElementById('exportBtn').addEventListener('click', exportPlaylist);
+
+    async function exportPlaylist() {
+        if (likedTracks.length === 0) return;
+        const btn = document.getElementById('exportBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Creating playlist…';
+
+        try {
+            const ids = likedTracks.map(t => t.track_id);
+            const resp = await fetch('/export_playlist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ track_ids: ids })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                btn.innerHTML = '<i class="fas fa-check me-2"></i> Playlist created!';
+                btn.className = 'btn btn-outline-success btn-lg w-100';
+                document.getElementById('exportHint').innerHTML =
+                    `<a href="${data.playlist_url}" target="_blank" class="text-success">
+                        Open in Spotify <i class="fas fa-external-link-alt"></i>
+                    </a>`;
+            } else {
+                btn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> ' + data.message;
+                btn.className = 'btn btn-warning btn-lg w-100';
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fab fa-spotify me-2"></i> Export Playlist to Spotify';
+                    btn.className = 'btn btn-success btn-lg w-100';
+                }, 3000);
+            }
+        } catch (err) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fab fa-spotify me-2"></i> Export Playlist to Spotify';
+        }
+    }
+
+    // ---- Reset ----
+    window.resetAndLoad = async function() {
+        await fetch('/discover/reset', { method: 'POST' });
+        fetchNext();
+    };
+})();
+</script>
+{% endblock %}

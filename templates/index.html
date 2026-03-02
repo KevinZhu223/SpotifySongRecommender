@@ -14,10 +14,18 @@
                 <p class="lead text-muted mb-4">Discover your next favorite song with AI-powered recommendations</p>
                 <div class="row justify-content-center">
                     <div class="col-md-8">
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i>
-                            <strong>New Features:</strong> Comprehensive filtering, enhanced ML accuracy, and interactive profile analytics!
+                        {% if not logged_in %}
+                        <div class="alert alert-warning">
+                            <i class="fab fa-spotify"></i>
+                            <strong>Step 1:</strong> <a href="{{ url_for('login') }}" class="alert-link">Log in with Spotify</a> to get started.
                         </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>Connected!</strong> Collect your data below, or jump straight to
+                            <a href="{{ url_for('discover_page') }}" class="alert-link">Discover</a> to swipe through new tracks.
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -26,7 +34,7 @@
 
     <!-- Main Action Cards -->
     <div class="row mb-5">
-        <div class="col-lg-4 col-md-6 mb-4">
+        <div class="col-lg-3 col-md-6 mb-4">
             <div class="card action-card h-100 border-0 shadow-lg">
                 <div class="card-body text-center p-4">
                     <div class="action-icon mb-3">
@@ -41,7 +49,7 @@
             </div>
         </div>
 
-        <div class="col-lg-4 col-md-6 mb-4">
+        <div class="col-lg-3 col-md-6 mb-4">
             <div class="card action-card h-100 border-0 shadow-lg">
                 <div class="card-body text-center p-4">
                     <div class="action-icon mb-3">
@@ -56,7 +64,22 @@
             </div>
         </div>
 
-        <div class="col-lg-4 col-md-6 mb-4">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card action-card h-100 border-0 shadow-lg" style="border-top: 4px solid #1db954 !important;">
+                <div class="card-body text-center p-4">
+                    <div class="action-icon mb-3">
+                        <i class="fas fa-fire fa-4x text-danger"></i>
+                    </div>
+                    <h4 class="card-title">Discover (Swipe)</h4>
+                    <p class="card-text text-muted">Tinder-style discovery: hear 30-sec previews, swipe to like, then export a playlist.</p>
+                    <a href="{{ url_for('discover_page') }}" class="btn btn-danger btn-lg w-100">
+                        <i class="fas fa-fire"></i> Start Swiping
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
             <div class="card action-card h-100 border-0 shadow-lg">
                 <div class="card-body text-center p-4">
                     <div class="action-icon mb-3">
@@ -338,7 +361,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 showStatus(`Loaded saved data: ${data.tracks_count} tracks, ${data.known_songs_count} known songs`, 'info');
                 // Enable recommendation buttons
                 document.getElementById('getRecommendationsBtn').disabled = false;
-                document.getElementById('getSpotifyRecommendationsBtn').disabled = false;
                 
                 // Update UI elements with loaded data
                 updateUIWithData(data);
@@ -468,8 +490,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
 
             if (data.success) {
-                displayRecommendations(data.recommendations);
-                showStatus(`Found ${data.recommendations.length} similar tracks!`, 'success');
+                displayRecommendations(data.results || []);
+                showStatus(`Found ${(data.results || []).length} similar tracks!`, 'success');
             } else {
                 showStatus(`Error: ${data.message}`, 'danger');
             }

@@ -40,23 +40,12 @@ function checkDataStatus() {
     $.get('/health')
         .done(function(response) {
             console.log('Health check:', response);
-            if (response.components.spotify_client) {
-                // Try to get user profile to check if data exists
-                $.get('/user_profile')
-                    .done(function(response) {
-                        if (response.success) {
-                            userData = response.profile;
-                            updateProfileDisplay();
-                            enableRecommendationFeatures();
-                        }
-                    })
-                    .fail(function() {
-                        console.log('No user data available yet');
-                    });
+            if (response.data_loaded) {
+                enableRecommendationFeatures();
             }
         })
         .fail(function() {
-            showAlert('Error connecting to the application', 'danger');
+            console.log('Health check failed — server may not be running');
         });
 }
 

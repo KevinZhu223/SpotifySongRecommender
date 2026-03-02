@@ -321,45 +321,53 @@ class DataCollector:
         return known_songs
     
     def collect_comprehensive_known_songs(self) -> set:
-        """Collect ALL known songs using Spotify API directly - implements your exact requirements"""
+        """Collect ALL known songs using Spotify API directly.
+
+        All helper methods (get_liked_songs, get_recently_played, etc.)
+        return *normalised* dicts with a top-level ``track_id`` key,
+        so we access ``track['track_id']`` – NOT the raw Spotify nesting.
+        """
         if self.spotify_client is None:
             raise ValueError("Spotify client not initialized")
         
         known_songs = set()
         
         try:
-            # 1. Pull all track IDs from "Liked Songs" (/me/tracks)
+            # 1. Liked Songs
             logger.info("Collecting liked songs...")
             liked_songs = self.spotify_client.get_liked_songs()
             for track in liked_songs:
-                if 'track' in track and 'id' in track['track']:
-                    known_songs.add(track['track']['id'])
+                if track.get('track_id'):
+                    known_songs.add(track['track_id'])
             logger.info(f"Found {len(liked_songs)} liked songs")
             
-            # 2. Pull from every playlist (/me/playlists + /playlists/{id}/tracks)
+            # 2. Playlist tracks
             logger.info("Collecting playlist tracks...")
             playlists = self.spotify_client.get_user_playlists_comprehensive()
             for playlist in playlists:
-                for track in playlist.get('tracks', []):
-                    if 'track' in track and track['track'] and 'id' in track['track']:
-                        known_songs.add(track['track']['id'])
+                playlist_id = playlist.get('playlist_id')
+                if playlist_id:
+                    tracks = self.spotify_client.get_playlist_tracks(playlist_id)
+                    for track in tracks:
+                        if track.get('track_id'):
+                            known_songs.add(track['track_id'])
             logger.info(f"Found tracks from {len(playlists)} playlists")
             
-            # 3. Include recently played tracks (/me/player/recently-played)
+            # 3. Recently played
             logger.info("Collecting recently played tracks...")
             recently_played = self.spotify_client.get_recently_played(limit=50)
             for track in recently_played:
-                if 'track' in track and 'id' in track['track']:
-                    known_songs.add(track['track']['id'])
+                if track.get('track_id'):
+                    known_songs.add(track['track_id'])
             logger.info(f"Found {len(recently_played)} recently played tracks")
             
-            # 4. Add top tracks (short, medium, long term)
+            # 4. Top tracks (short, medium, long term)
             logger.info("Collecting top tracks...")
             for time_range in ['short_term', 'medium_term', 'long_term']:
                 top_tracks = self.spotify_client.get_top_tracks(time_range=time_range, limit=50)
                 for track in top_tracks:
-                    if 'id' in track:
-                        known_songs.add(track['id'])
+                    if track.get('track_id'):
+                        known_songs.add(track['track_id'])
             logger.info("Collected top tracks from all time ranges")
             
             logger.info(f"TOTAL KNOWN SONGS COLLECTED: {len(known_songs)}")

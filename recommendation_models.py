@@ -120,50 +120,49 @@ class RecommendationModels:
     
     def get_content_based_recommendations(self, track_id: str, tracks_df: pd.DataFrame, n_recommendations: int = 10, known_songs: set = None) -> List[Dict]:
         """Get content-based recommendations for a track"""
-        if self.similarity_matrix is None or tracks_df is None or tracks_df.empty:
+        if self.similarity_matrix is None or self.tracks_df is None or self.tracks_df.empty:
             logger.error("Content-based model not fitted or no tracks data")
-            # Fall back to user-based recommendations
             return []
-        
+
         try:
-            # Filter out known songs from the candidate pool
-            if known_songs:
-                original_size = len(tracks_df)
-                tracks_df = tracks_df[~tracks_df['track_id'].isin(known_songs)]
-                logger.info(f"Filtered out {original_size - len(tracks_df)} known songs from content-based candidate pool")
-                
-                if tracks_df.empty:
-                    logger.warning("No unknown songs available for content-based recommendations")
-                    return []
+            # Find track index using positional index in original dataframe
+            matches = np.where(self.tracks_df['track_id'] == track_id)[0]
             
-            # Find track index
-            track_idx = tracks_df[tracks_df['track_id'] == track_id].index
-            
-            if len(track_idx) == 0:
+            if len(matches) == 0:
                 logger.warning(f"Track {track_id} not found in dataset")
                 return []
             
-            track_idx = track_idx[0]
+            positional_idx = matches[0]
             
             # Get similarity scores
-            similarity_scores = self.similarity_matrix[track_idx]
+            similarity_scores = self.similarity_matrix[positional_idx]
             
-            # Get top similar tracks (excluding the input track)
-            similar_indices = np.argsort(similarity_scores)[::-1][1:n_recommendations+1]
+            # Get top similar tracks by score descending
+            similar_indices = np.argsort(similarity_scores)[::-1]
             
             recommendations = []
             for idx in similar_indices:
-                track_data = tracks_df.iloc[idx]
+                if idx == positional_idx:
+                    continue  # skip the input track itself
+                    
+                track_data = self.tracks_df.iloc[idx]
+                cand_id = track_data['track_id']
+                
+                # Check against known songs
+                if known_songs and cand_id in known_songs:
+                    continue
+                    
                 recommendations.append({
-                    'track_id': track_data['track_id'],
+                    'track_id': cand_id,
                     'track_name': track_data['track_name'],
                     'artist_name': track_data['artist_name'],
-                    'album_name': track_data['album_name'],
-                    'similarity_score': similarity_scores[idx],
+                    'album_name': track_data.get('album_name', ''),
+                    'similarity_score': round(float(similarity_scores[idx]) * 100, 1),
                     'recommendation_type': 'content_based'
                 })
-            
-            logger.info(f"Generated {len(recommendations)} content-based recommendations")
+                
+                if len(recommendations) >= n_recommendations:
+                    break
             return recommendations
             
         except Exception as e:
@@ -299,7 +298,7 @@ class RecommendationModels:
         logger.info(f"Discovery filtering: {len(discovery_tracks)}/{len(recommendations)} tracks are new discoveries")
         return discovery_tracks
     
-    def get_spotify_recommendations(self, tracks_df: pd.DataFrame, known_songs: set, n_recommendations: int = 10) -> List[Dict]:
+    def get_spotify_recommendations(self, tracks_df: pd.DataFrame, known_songs: set, n_recommendations: int = 10, spotify_client=None) -> List[Dict]:
         """Get recommendations using Spotify's recommendation API - ONLY NEW TRACKS"""
         try:
             logger.info(f"Getting Spotify API recommendations, filtering {len(known_songs)} known songs")
@@ -312,9 +311,14 @@ class RecommendationModels:
             
             logger.info(f"Using {len(seed_tracks)} seed tracks for Spotify recommendations")
             
-            # Get recommendations from Spotify API
-            from spotify_client import SpotifyClient
-            spotify_client = SpotifyClient()
+            # Use the provided client, or try cached-token fallback
+            if spotify_client is None:
+                from spotify_client import SpotifyClient
+                try:
+                    spotify_client = SpotifyClient()
+                except Exception as auth_err:
+                    logger.warning(f"SpotifyClient() cached-token auth failed: {auth_err}")
+                    return self._get_spotify_based_recommendations(tracks_df, None, known_songs or set(), n_recommendations)
             
             # Get more recommendations than needed to account for filtering
             spotify_recs = spotify_client.get_recommendations(seed_tracks, n_recommendations * 3)
@@ -352,11 +356,11 @@ class RecommendationModels:
             logger.info("Falling back to content-based recommendations")
             return self._get_spotify_based_recommendations(tracks_df, None, known_songs or set(), n_recommendations)
     
-    def get_spotify_recommendations_with_fallback(self, tracks_df: pd.DataFrame, known_songs: set, n_recommendations: int = 10) -> List[Dict]:
+    def get_spotify_recommendations_with_fallback(self, tracks_df: pd.DataFrame, known_songs: set, n_recommendations: int = 10, spotify_client=None) -> List[Dict]:
         """Get recommendations with robust fallback mechanism"""
         try:
             # First try Spotify API
-            spotify_recs = self.get_spotify_recommendations(tracks_df, known_songs, n_recommendations)
+            spotify_recs = self.get_spotify_recommendations(tracks_df, known_songs, n_recommendations, spotify_client=spotify_client)
             
             if spotify_recs and len(spotify_recs) > 0:
                 logger.info(f"Successfully got {len(spotify_recs)} Spotify API recommendations")
@@ -406,10 +410,10 @@ class RecommendationModels:
         
         # Add content-based recommendations
         for rec in content_recs:
-            track_id = rec['track_id']
-            if track_id not in all_recommendations:
-                all_recommendations[track_id] = {
-                    'track_id': track_id,
+            tid = rec['track_id']
+            if tid not in all_recommendations:
+                all_recommendations[tid] = {
+                    'track_id': tid,
                     'track_name': rec['track_name'],
                     'artist_name': rec['artist_name'],
                     'album_name': rec['album_name'],
@@ -418,14 +422,14 @@ class RecommendationModels:
                     'hybrid_score': 0.0
                 }
             else:
-                all_recommendations[track_id]['content_score'] = rec['similarity_score']
-        
+                all_recommendations[tid]['content_score'] = rec['similarity_score']
+
         # Add user-based recommendations
         for rec in user_recs:
-            track_id = rec['track_id']
-            if track_id not in all_recommendations:
-                all_recommendations[track_id] = {
-                    'track_id': track_id,
+            tid = rec['track_id']
+            if tid not in all_recommendations:
+                all_recommendations[tid] = {
+                    'track_id': tid,
                     'track_name': rec['track_name'],
                     'artist_name': rec['artist_name'],
                     'album_name': rec['album_name'],
@@ -434,13 +438,15 @@ class RecommendationModels:
                     'hybrid_score': 0.0
                 }
             else:
-                all_recommendations[track_id]['user_score'] = rec['similarity_score']
+                all_recommendations[tid]['user_score'] = rec['similarity_score']
         
-        # Calculate hybrid scores
-        for track_id, rec in all_recommendations.items():
-            rec['hybrid_score'] = (content_weight * rec['content_score'] + 
-                                 (1 - content_weight) * rec['user_score'])
-        
+        # Compute hybrid score as weighted combination
+        for rec in all_recommendations.values():
+            rec['hybrid_score'] = (
+                content_weight * rec['content_score']
+                + (1 - content_weight) * rec['user_score']
+            )
+
         # Sort by hybrid score and return top recommendations
         sorted_recommendations = sorted(
             all_recommendations.values(),
@@ -796,10 +802,10 @@ class RecommendationModels:
             # Ensure we have at least one seed (tracks or artists)
             has_seeds = False
             
-            # Add seed tracks (max 5) - only if they are valid Spotify track IDs
+            # Add seed tracks (max 5) - accept any non-empty track ID
             valid_seed_tracks = []
             for track_id in seed_tracks[:5]:
-                if track_id and len(track_id) == 22:  # Spotify track IDs are 22 characters
+                if track_id and isinstance(track_id, str) and len(track_id) > 0:
                     valid_seed_tracks.append(track_id)
             
             if valid_seed_tracks:

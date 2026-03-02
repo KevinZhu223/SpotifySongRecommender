@@ -27,12 +27,37 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('index') }}">
                             <i class="fas fa-home"></i> Home
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('discover_page') }}">
+                            <i class="fas fa-fire"></i> Discover
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('profile_page') }}">
+                            <i class="fas fa-chart-line"></i> Profile
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav ms-auto">
+                    {% if session.get('token_info') %}
+                    <li class="nav-item">
+                        <a class="nav-link text-success" href="{{ url_for('logout') }}">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-sm btn-outline-success text-success ms-2" href="{{ url_for('login') }}">
+                            <i class="fab fa-spotify"></i> Log in with Spotify
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

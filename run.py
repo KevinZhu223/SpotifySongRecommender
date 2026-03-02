@@ -46,7 +46,7 @@ def main():
     
     print("Environment check passed")
     print("Starting Flask application...")
-    print("Open http://localhost:5001 in your browser")
+    print("Open http://127.0.0.1:5001 in your browser")
     print("=" * 50)
     
     try:
